@@ -1,8 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { act } from "react";
-import { SCHEME_CHOICE_FRAME } from "../src/config/config";
-
+import { act } from "@testing-library/react";
 import { SchemeChoice } from "../src/components/SchemeChoice";
 
 let container: HTMLDivElement | null = null;
@@ -11,24 +9,33 @@ let root: ReturnType<typeof createRoot> | null = null;
 beforeEach(() => {
   container = document.createElement("div");
   document.body.appendChild(container);
-  root = createRoot(container); // Initialize the root
+  root = createRoot(container);
 });
 
 afterEach(() => {
-  if (root) {
-    root.unmount(); // Clean up
-    container?.remove();
+  if (root && container) {
+    act(() => {
+      root!.unmount();
+    });
+    container.remove();
     container = null;
     root = null;
   }
 });
 
 it("renders SchemeChoice placeholder with injected class name", () => {
-  act(() => {
-    root?.render(<SchemeChoice className="example" />);
-  });
+  if (root && container) {
+    act(() => {
+      root!.render(<SchemeChoice className="example" />);
+    });
 
-  expect((container?.firstChild as HTMLElement).className).toEqual(
-    `${SCHEME_CHOICE_FRAME} example`
-  );
+    const firstChild = container.firstChild as HTMLElement | null;
+    if (firstChild) {
+      expect(firstChild.className).toEqual(`scheme-choice-frame example`);
+    } else {
+      throw new Error("First child is null");
+    }
+  } else {
+    throw new Error("root or container is null");
+  }
 });

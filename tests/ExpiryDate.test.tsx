@@ -1,30 +1,42 @@
 import React from "react";
-import { render, unmountComponentAtNode } from "react-dom";
-import { act } from "react-dom/test-utils";
+import { act } from "@testing-library/react";
+import { createRoot, Root } from "react-dom/client"; // Correct import
+import { ExpiryDate } from "../src/components/ExpiryDate";
 import { EXPIRY_DATE_FRAME } from "../src/config/config";
 
-import { ExpiryDate } from "../src/components/ExpiryDate";
-
 let container: HTMLDivElement | null = null;
+let root: Root | null = null;
 
 beforeEach(() => {
   container = document.createElement("div");
   document.body.appendChild(container);
+  root = createRoot(container);
 });
 
 afterEach(() => {
-  if (container) {
-    unmountComponentAtNode(container);
+  if (root && container) {
+    act(() => {
+      root!.unmount();
+    });
     container.remove();
     container = null;
+    root = null;
   }
 });
 
-it("renders expiry date placeholder with injected class name", () => {
-  act(() => {
-    render(<ExpiryDate className="example" />, container as Element);
+it("renders expiry date placeholder with injected class name", async () => {
+  await act(async () => {
+    if (root) {
+      root.render(<ExpiryDate className="example" />);
+    } else {
+      throw new Error("Root is null");
+    }
   });
-  expect((container?.firstChild as HTMLElement).className).toEqual(
-    `${EXPIRY_DATE_FRAME} example`
-  );
+
+  const firstChild = container?.firstChild as HTMLElement | null;
+  if (firstChild) {
+    expect(firstChild.className).toEqual(`${EXPIRY_DATE_FRAME} example`);
+  } else {
+    throw new Error("First child is null");
+  }
 });

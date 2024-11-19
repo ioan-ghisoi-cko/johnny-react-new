@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-
 import {
   FramesProps,
   FramesAppendedProps,
@@ -8,9 +7,10 @@ import {
 } from "../types/types";
 import { CDN } from "../config/config";
 
+// Ensure global definition
 declare global {
   interface Window {
-    Frames: FramesAppendedProps;
+    Frames: FramesAppendedProps | undefined;
   }
 }
 
@@ -25,9 +25,14 @@ export class Frames extends Component<FramesProps> {
   componentDidMount(): void {
     const existingScript = document.querySelector(`script[src$="${CDN}"]`);
     if (!existingScript) {
-      console.error(
-        `Checkout.com CDN not present. Perhaps you forgot to add <script src="${CDN}"></script> to your index.html file.`
-      );
+      (async () => {
+        try {
+          await this.loadScript();
+          this.initializeFrames();
+        } catch (error: any) {
+          throw new Error(error);
+        }
+      })();
     } else {
       this.initializeFrames();
     }
@@ -35,22 +40,34 @@ export class Frames extends Component<FramesProps> {
 
   shouldComponentUpdate(nextProps: FramesProps) {
     if (typeof window !== "undefined" && window.Frames) {
+      const frames = window.Frames; // Type guard
       if (nextProps.config.cardholder && nextProps.config.cardholder.name) {
-        window.Frames.cardholder.name = nextProps.config.cardholder.name;
+        frames.cardholder.name = nextProps.config.cardholder.name;
       }
       if (
         nextProps.config.cardholder &&
         nextProps.config.cardholder.billingAddress
       ) {
-        window.Frames.cardholder.billingAddress =
+        frames.cardholder.billingAddress =
           nextProps.config.cardholder.billingAddress;
       }
       if (nextProps.config.cardholder && nextProps.config.cardholder.phone) {
-        window.Frames.cardholder.phone = nextProps.config.cardholder.phone;
+        frames.cardholder.phone = nextProps.config.cardholder.phone;
       }
     }
     return true;
   }
+
+  loadScript = () => {
+    if (typeof window === "undefined") return;
+    return new Promise((resolve, reject) => {
+      const scriptTag = document.createElement("script");
+      scriptTag.src = CDN;
+      scriptTag.onload = (ev) => resolve(ev);
+      scriptTag.onerror = (err) => reject(err);
+      document.body.appendChild(scriptTag);
+    });
+  };
 
   initializeFrames = () => {
     let config = {
@@ -141,26 +158,31 @@ export class Frames extends Component<FramesProps> {
    * @memberof Frames
    */
   static init = (config?: FramesInitProps) => {
-    // remove event handlers to avoid event duplication
-    window.Frames.removeAllEventHandlers(window.Frames.Events.CARD_SUBMITTED);
-    window.Frames.removeAllEventHandlers(
-      window.Frames.Events.CARD_TOKENIZATION_FAILED
-    );
-    window.Frames.removeAllEventHandlers(window.Frames.Events.CARD_TOKENIZED);
-    window.Frames.removeAllEventHandlers(
-      window.Frames.Events.CARD_VALIDATION_CHANGED
-    );
-    window.Frames.removeAllEventHandlers(window.Frames.Events.FRAME_ACTIVATED);
-    window.Frames.removeAllEventHandlers(window.Frames.Events.FRAME_BLUR);
-    window.Frames.removeAllEventHandlers(window.Frames.Events.FRAME_FOCUS);
-    window.Frames.removeAllEventHandlers(
-      window.Frames.Events.FRAME_VALIDATION_CHANGED
-    );
-    window.Frames.removeAllEventHandlers(
-      window.Frames.Events.PAYMENT_METHOD_CHANGED
-    );
-    window.Frames.removeAllEventHandlers(window.Frames.Events.READY);
-    config ? window.Frames.init(config) : window.Frames.init();
+    if (window.Frames) {
+      // Check if Frames is defined
+      // remove event handlers to avoid event duplication
+      window.Frames.removeAllEventHandlers(window.Frames.Events.CARD_SUBMITTED);
+      window.Frames.removeAllEventHandlers(
+        window.Frames.Events.CARD_TOKENIZATION_FAILED
+      );
+      window.Frames.removeAllEventHandlers(window.Frames.Events.CARD_TOKENIZED);
+      window.Frames.removeAllEventHandlers(
+        window.Frames.Events.CARD_VALIDATION_CHANGED
+      );
+      window.Frames.removeAllEventHandlers(
+        window.Frames.Events.FRAME_ACTIVATED
+      );
+      window.Frames.removeAllEventHandlers(window.Frames.Events.FRAME_BLUR);
+      window.Frames.removeAllEventHandlers(window.Frames.Events.FRAME_FOCUS);
+      window.Frames.removeAllEventHandlers(
+        window.Frames.Events.FRAME_VALIDATION_CHANGED
+      );
+      window.Frames.removeAllEventHandlers(
+        window.Frames.Events.PAYMENT_METHOD_CHANGED
+      );
+      window.Frames.removeAllEventHandlers(window.Frames.Events.READY);
+      config ? window.Frames.init(config) : window.Frames.init();
+    }
   };
 
   /**
@@ -171,7 +193,7 @@ export class Frames extends Component<FramesProps> {
    * @return {boolean} Card validity
    */
   static isCardValid = () => {
-    return window.Frames.isCardValid();
+    return window.Frames ? window.Frames.isCardValid() : false;
   };
 
   /**
@@ -182,7 +204,9 @@ export class Frames extends Component<FramesProps> {
    * @return {Promise<FrameCardTokenizedEvent>}
    */
   static submitCard = () => {
-    return window.Frames.submitCard();
+    return window.Frames
+      ? window.Frames.submitCard()
+      : Promise.reject("Frames is not defined");
   };
 
   /**
@@ -198,7 +222,9 @@ export class Frames extends Component<FramesProps> {
     event: FramesEvents[keyof FramesEvents],
     handler: () => any
   ) => {
-    window.Frames.addEventHandler(event, handler);
+    if (window.Frames) {
+      window.Frames.addEventHandler(event, handler);
+    }
   };
 
   /**
@@ -213,7 +239,9 @@ export class Frames extends Component<FramesProps> {
     event: FramesEvents[keyof FramesEvents],
     handler: () => any
   ) => {
-    window.Frames.removeEventHandler(event, handler);
+    if (window.Frames) {
+      window.Frames.removeEventHandler(event, handler);
+    }
   };
 
   /**
@@ -225,7 +253,9 @@ export class Frames extends Component<FramesProps> {
    * @return {void}
    */
   static removeAllEventHandlers = (event: FramesEvents[keyof FramesEvents]) => {
-    window.Frames.removeAllEventHandlers(event);
+    if (window.Frames) {
+      window.Frames.removeAllEventHandlers(event);
+    }
   };
 
   /**
@@ -236,11 +266,12 @@ export class Frames extends Component<FramesProps> {
    * @return {void}
    */
   static enableSubmitForm = () => {
-    window.Frames.enableSubmitForm();
+    if (window.Frames) {
+      window.Frames.enableSubmitForm();
+    }
   };
 
   componentWillUnmount(): void {
-    // remove event handlers to avoid event duplication
     if (window.Frames) {
       window.Frames.removeAllEventHandlers(window.Frames.Events.CARD_SUBMITTED);
       window.Frames.removeAllEventHandlers(
