@@ -22,11 +22,21 @@ export default {
   ],
   plugins: [
     peerDepsExternal(),
-    resolve(),
+    resolve({
+      extensions: [".mjs", ".js", ".jsx", ".ts", ".tsx"], // Add .ts and .tsx
+    }),
     commonjs(),
     terser(),
     typescript({
-      rollupCommonJSResolveHack: false,
+      tsconfig: "./tsconfig.json",
+      tsconfigOverride: {
+        compilerOptions: {
+          declaration: true,
+          declarationDir: "dist/types",
+        },
+        include: ["src/**/*"],
+      },
+      useTsconfigDeclarationDir: true,
       clean: true,
     }),
   ],
